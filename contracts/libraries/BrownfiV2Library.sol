@@ -56,9 +56,9 @@ library BrownfiV2Library {
         require(reserveIn > 0 && reserveOut > 0, 'BrownfiV2Library: INSUFFICIENT_LIQUIDITY');
         require(k > 0, 'BrownfiV2Library: INSUFFICIENT_K');
 
-        uint numerator = reserveIn.mul(amountOut).mul(10);
+        uint numerator = reserveIn.mul(amountOut);
         numerator = numerator.mul(reserveOut.mul(2000).sub(amountOut.mul(2000)).add(amountOut.mul(k)));
-        uint denominator = reserveOut.mul(reserveOut.sub(amountOut)).mul(19950); // 19950 = 20000 - 50. 0.5% fee
+        uint denominator = reserveOut.mul(reserveOut.sub(amountOut)).mul(1995); // 1995 = 2000 - 5. 0.5% fee
         return (numerator / denominator);
     }
 
