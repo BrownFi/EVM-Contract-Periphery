@@ -22,7 +22,7 @@ library BrownfiV2Library {
                 hex'ff',
                 factory,
                 keccak256(abi.encodePacked(token0, token1)),
-                hex'7b2ca68961ae8d1b69b95e4ed7f27f06bffd06091f99fe0b641a51a6c65d8db9' // init code hash
+                hex'689fb83dc5445f9bdeec02d0e7736f1a246b8d8a933fe4e72bc8faa91b04bbe4' // init code hash
             ))));
     }
 
