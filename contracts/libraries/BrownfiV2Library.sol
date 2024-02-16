@@ -58,6 +58,8 @@ library BrownfiV2Library {
 
         uint numerator = reserveIn.mul(amountOut);
         numerator = numerator.mul(reserveOut.mul(2000).sub(amountOut.mul(2000)).add(amountOut.mul(k)));
+        // 1000 = 100% fee 
+        // k = 2000
         uint denominator = reserveOut.mul(reserveOut.sub(amountOut)).mul(1995); // 1995 = 2000 - 5. 0.5% fee
         return (numerator / denominator);
     }
