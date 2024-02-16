@@ -50,5 +50,5 @@ interface IBrownfiV2Pair {
 
     function initialize(address, address) external;
 
-    function K() external view returns (uint256);
+    function k() external view returns (uint);
 }

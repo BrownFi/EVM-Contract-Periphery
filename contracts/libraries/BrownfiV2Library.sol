@@ -56,7 +56,8 @@ library BrownfiV2Library {
         require(reserveIn > 0 && reserveOut > 0, 'BrownfiV2Library: INSUFFICIENT_LIQUIDITY');
         require(k > 0, 'BrownfiV2Library: INSUFFICIENT_K');
 
-        uint numerator = reserveIn.mul(amountOut).mul(amountOut).mul(k).mul(10);
+        uint numerator = reserveIn.mul(amountOut).mul(10);
+        numerator = numerator.mul(reserveOut.mul(2000).sub(amountOut.mul(2000)).add(amountOut.mul(k)));
         uint denominator = reserveOut.mul(reserveOut.sub(amountOut)).mul(19950); // 19950 = 20000 - 50. 0.5% fee
         return (numerator / denominator);
     }
@@ -81,7 +82,7 @@ library BrownfiV2Library {
             (uint reserveIn, uint reserveOut) = getReserves(factory, path[i - 1], path[i]);
             // compute pair address
             address pair = pairFor(factory, path[i - 1], path[i]);
-            amounts[i - 1] = getAmountIn(amounts[i], reserveIn, reserveOut, IBrownfiV2Pair(pair).K());
+            amounts[i - 1] = getAmountIn(amounts[i], reserveIn, reserveOut, IBrownfiV2Pair(pair).k());
         }
     }
 
