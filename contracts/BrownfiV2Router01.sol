@@ -176,18 +176,18 @@ contract BrownfiV2Router01 is IBrownfiV2Router01 {
             IBrownfiV2Pair(BrownfiV2Library.pairFor(factory, input, output)).swap(amount0Out, amount1Out, to, new bytes(0));
         }
     }
-    // function swapExactTokensForTokens(
-    //     uint amountIn,
-    //     uint amountOutMin,
-    //     address[] calldata path,
-    //     address to,
-    //     uint deadline
-    // ) external override ensure(deadline) returns (uint[] memory amounts) {
-    //     amounts = BrownfiV2Library.getAmountsOut(factory, amountIn, path);
-    //     require(amounts[amounts.length - 1] >= amountOutMin, 'BrownfiV2Router: INSUFFICIENT_OUTPUT_AMOUNT');
-    //     TransferHelper.safeTransferFrom(path[0], msg.sender, BrownfiV2Library.pairFor(factory, path[0], path[1]), amounts[0]);
-    //     _swap(amounts, path, to);
-    // }
+    function swapExactTokensForTokens(
+        uint amountIn,
+        uint amountOutMin,
+        address[] calldata path,
+        address to,
+        uint deadline
+    ) external override ensure(deadline) returns (uint[] memory amounts) {
+        amounts = BrownfiV2Library.getAmountsOut(factory, amountIn, path);
+        require(amounts[amounts.length - 1] >= amountOutMin, 'BrownfiV2Router: INSUFFICIENT_OUTPUT_AMOUNT');
+        TransferHelper.safeTransferFrom(path[0], msg.sender, BrownfiV2Library.pairFor(factory, path[0], path[1]), amounts[0]);
+        _swap(amounts, path, to);
+    }
     function swapTokensForExactTokens(
         uint amountOut,
         uint amountInMax,
@@ -200,20 +200,20 @@ contract BrownfiV2Router01 is IBrownfiV2Router01 {
         TransferHelper.safeTransferFrom(path[0], msg.sender, BrownfiV2Library.pairFor(factory, path[0], path[1]), amounts[0]);
         _swap(amounts, path, to);
     }
-    // function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline)
-    //     external
-    //     override
-    //     payable
-    //     ensure(deadline)
-    //     returns (uint[] memory amounts)
-    // {
-    //     require(path[0] == WETH, 'BrownfiV2Router: INVALID_PATH');
-    //     amounts = BrownfiV2Library.getAmountsOut(factory, msg.value, path);
-    //     require(amounts[amounts.length - 1] >= amountOutMin, 'BrownfiV2Router: INSUFFICIENT_OUTPUT_AMOUNT');
-    //     IWETH(WETH).deposit{value: amounts[0]}();
-    //     assert(IWETH(WETH).transfer(BrownfiV2Library.pairFor(factory, path[0], path[1]), amounts[0]));
-    //     _swap(amounts, path, to);
-    // }
+    function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline)
+        external
+        override
+        payable
+        ensure(deadline)
+        returns (uint[] memory amounts)
+    {
+        require(path[0] == WETH, 'BrownfiV2Router: INVALID_PATH');
+        amounts = BrownfiV2Library.getAmountsOut(factory, msg.value, path);
+        require(amounts[amounts.length - 1] >= amountOutMin, 'BrownfiV2Router: INSUFFICIENT_OUTPUT_AMOUNT');
+        IWETH(WETH).deposit{value: amounts[0]}();
+        assert(IWETH(WETH).transfer(BrownfiV2Library.pairFor(factory, path[0], path[1]), amounts[0]));
+        _swap(amounts, path, to);
+    }
     function swapTokensForExactETH(uint amountOut, uint amountInMax, address[] calldata path, address to, uint deadline)
         external
         override
@@ -228,20 +228,20 @@ contract BrownfiV2Router01 is IBrownfiV2Router01 {
         IWETH(WETH).withdraw(amounts[amounts.length - 1]);
         TransferHelper.safeTransferETH(to, amounts[amounts.length - 1]);
     }
-    // function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline)
-    //     external
-    //     override
-    //     ensure(deadline)
-    //     returns (uint[] memory amounts)
-    // {
-    //     require(path[path.length - 1] == WETH, 'BrownfiV2Router: INVALID_PATH');
-    //     amounts = BrownfiV2Library.getAmountsOut(factory, amountIn, path);
-    //     require(amounts[amounts.length - 1] >= amountOutMin, 'BrownfiV2Router: INSUFFICIENT_OUTPUT_AMOUNT');
-    //     TransferHelper.safeTransferFrom(path[0], msg.sender, BrownfiV2Library.pairFor(factory, path[0], path[1]), amounts[0]);
-    //     _swap(amounts, path, address(this));
-    //     IWETH(WETH).withdraw(amounts[amounts.length - 1]);
-    //     TransferHelper.safeTransferETH(to, amounts[amounts.length - 1]);
-    // }
+    function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline)
+        external
+        override
+        ensure(deadline)
+        returns (uint[] memory amounts)
+    {
+        require(path[path.length - 1] == WETH, 'BrownfiV2Router: INVALID_PATH');
+        amounts = BrownfiV2Library.getAmountsOut(factory, amountIn, path);
+        require(amounts[amounts.length - 1] >= amountOutMin, 'BrownfiV2Router: INSUFFICIENT_OUTPUT_AMOUNT');
+        TransferHelper.safeTransferFrom(path[0], msg.sender, BrownfiV2Library.pairFor(factory, path[0], path[1]), amounts[0]);
+        _swap(amounts, path, address(this));
+        IWETH(WETH).withdraw(amounts[amounts.length - 1]);
+        TransferHelper.safeTransferETH(to, amounts[amounts.length - 1]);
+    }
     function swapETHForExactTokens(uint amountOut, address[] calldata path, address to, uint deadline)
         external
         override
@@ -262,8 +262,8 @@ contract BrownfiV2Router01 is IBrownfiV2Router01 {
         return BrownfiV2Library.quote(amountA, reserveA, reserveB);
     }
 
-    function getAmountOut(uint amountIn, uint reserveIn, uint reserveOut) public pure override returns (uint amountOut) {
-        return BrownfiV2Library.getAmountOut(amountIn, reserveIn, reserveOut);
+    function getAmountOut(uint amountIn, uint reserveIn, uint reserveOut, uint k) public pure override returns (uint amountOut) {
+        return BrownfiV2Library.getAmountOut(amountIn, reserveIn, reserveOut, k);
     }
 
     function getAmountIn(uint amountOut, uint reserveIn, uint reserveOut, uint k) public pure override returns (uint amountIn) {
