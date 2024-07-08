@@ -3,6 +3,7 @@ pragma solidity >=0.5.0;
 import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol';
 
 import "./SafeMath.sol";
+import "./FullMath.sol";
 
 library UniswapV2Library {
     using SafeMath for uint;
@@ -40,22 +41,36 @@ library UniswapV2Library {
     }
 
     // given an input amount of an asset and pair reserves, returns the maximum output amount of the other asset
-    function getAmountOut(uint amountIn, uint reserveIn, uint reserveOut) internal pure returns (uint amountOut) {
+    function getAmountOut(uint amountIn, uint reserveIn, uint reserveOut, uint kappa, uint oPrice) internal pure returns (uint amountOut) {
         require(amountIn > 0, 'UniswapV2Library: INSUFFICIENT_INPUT_AMOUNT');
         require(reserveIn > 0 && reserveOut > 0, 'UniswapV2Library: INSUFFICIENT_LIQUIDITY');
-        uint amountInWithFee = amountIn.mul(997);
-        uint numerator = amountInWithFee.mul(reserveOut);
-        uint denominator = reserveIn.mul(1000).add(amountInWithFee);
-        amountOut = numerator / denominator;
+        if (kappa == 2000) {
+            // dx = x * dy / (P * x + dy)
+            amountOut = FullMath.mulDiv(reserveOut, amountIn, oPrice.mul(reserveOut).add(amountIn));
+        } else {
+            // P * x + dy - sqrt(delta)
+            uint numerator = oPrice.mul(reserveOut).add(amountIn).sub(SafeMath.sqrt(delta(amountIn, reserveOut, kappa, oPrice)));
+            // P * (2 - K)
+            uint denominator = oPrice.mul(2.sub(kappa)).div(1000);
+            amountOut = numerator / denominator;
+        }
+        // Compute amountOut with fee
+        amountOut = numerator.div(denominator).mul(997).div(1000); // fee 0.3%
     }
 
     // given an output amount of an asset and pair reserves, returns a required input amount of the other asset
-    function getAmountIn(uint amountOut, uint reserveIn, uint reserveOut) internal pure returns (uint amountIn) {
+    // TODO: reserveIn not in use, remove it
+    function getAmountIn(uint amountOut, uint reserveIn, uint reserveOut, uint kappa, uint oPrice) internal pure returns (uint amountIn) {
         require(amountOut > 0, 'UniswapV2Library: INSUFFICIENT_OUTPUT_AMOUNT');
         require(reserveIn > 0 && reserveOut > 0, 'UniswapV2Library: INSUFFICIENT_LIQUIDITY');
-        uint numerator = reserveIn.mul(amountOut).mul(1000);
-        uint denominator = reserveOut.sub(amountOut).mul(997);
-        amountIn = (numerator / denominator).add(1);
+        // check 10 * dx < 9 * x
+        require(amountOut.mul(10) < reserveOut.mul(9), 'UniswapV2Library: INSUFFICIENT_OUTPUT_AMOUNT');
+        // Compute price impact: R = (K * dx) / (x - dx)
+        uint r = FullMath.mulDivRoundingUp(kappa, amountOut, reserveOut.sub(amountOut).mul(1000));
+        // Compute average trading price: P * (2 + R) / 2
+        uint avgPrice = FullMath.mulDivRoundingUp(oPrice, 2 + r, 2);
+        // Compute amountIn with fee
+        amountIn = amountOut.mul(avgPrice).mul(1000).div(997); // fee 0.3%
     }
 
     // performs chained getAmountOut calculations on any number of pairs
@@ -65,7 +80,8 @@ library UniswapV2Library {
         amounts[0] = amountIn;
         for (uint i; i < path.length - 1; i++) {
             (uint reserveIn, uint reserveOut) = getReserves(factory, path[i], path[i + 1]);
-            amounts[i + 1] = getAmountOut(amounts[i], reserveIn, reserveOut);
+            address pair = pairFor(factory, path[i - 1], path[i]);
+            amounts[i + 1] = getAmountOut(amounts[i], reserveIn, reserveOut, IUniswapV2Pair(pair).kappa(), IUniswapV2Pair(pair).oPrice());
         }
     }
 
@@ -76,7 +92,19 @@ library UniswapV2Library {
         amounts[amounts.length - 1] = amountOut;
         for (uint i = path.length - 1; i > 0; i--) {
             (uint reserveIn, uint reserveOut) = getReserves(factory, path[i - 1], path[i]);
-            amounts[i - 1] = getAmountIn(amounts[i], reserveIn, reserveOut);
+            // compute pair address
+            address pair = pairFor(factory, path[i - 1], path[i]);
+            amounts[i - 1] = getAmountIn(amounts[i], reserveIn, reserveOut, IUniswapV2Pair(pair).kappa(), IUniswapV2Pair(pair).oPrice());
         }
+    }
+
+    function delta(uint amountIn, uint reserveOut, uint kappa, uint oPrice) public pure returns (uint _delta) {
+        // (P * x - dy)^2 + 2 * P * K * x * dy
+        // temp1 = (P * x - dy)^2
+        uint temp1 = SafeMath.rpow(oPrice.mul(reserveOut).sub(amountIn), 2);
+        // temp2 = 2 * P * K * x * dy
+        uint temp2 = oPrice.mul(2).mul(kappa).mul(reserveOut).mul(amountIn);
+        _delta = temp1.add(temp2);
+        return _delta;
     }
 }
